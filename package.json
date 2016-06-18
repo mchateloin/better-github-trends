@@ -46,6 +46,7 @@
     "react-router": "^2.0.0-rc5",
     "redux": "^3.5.2",
     "redux-thunk": "^2.0.1",
+    "rsvp": "3.2.1",
     "sanitize-html": "^1.11.3",
     "slug": "^0.9.1"
   },

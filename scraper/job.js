@@ -1,53 +1,89 @@
-var https = require('https'),
-    cheerio = require('cheerio'),
-    $;
+import https from 'https';
+import cheerio from 'cheerio';
+import mongoose from 'mongoose';
+import languages from 'languages';
+import RSVP from 'rsvp';
 
-module.exports = () => {
+const githubTrendingUrl = 'https://github.com/trending';
 
-  var githubTrendingUrl = 'https://github.com/trending';
+var parseReposFromTrendingPage = function(html){
+  var $ = cheerio.load(html);
 
-  https.get(githubTrendingUrl, (response) => {
+  return $('.repo-list-item')
+    .toArray()
+    .map(repoListItem => ({
+        name: $('.repo-list-name', repoListItem).text(),
+        description: $('.repo-list-description', repoListItem).html(),
+        language: $('.repo-list-meta', repoListItem).text()
+    }))
+    .map(repo => {
 
-    var htmlPayload = '';
+      if (typeof repo.name === 'string') {
+        repo.name = repo.name.replace(/^\s+|\s+$|\s+(?=\s)/g, '').replace(' / ', '/');
+      }
 
-    response.on('data', (chunk) => {
-      htmlPayload += chunk;
-    })
+      if (typeof repo.description == 'string') {
+        repo.description = repo.description.replace(/^\s+|\s+$|\s+(?=\s)/g, '');
+      }
 
-    response.on('end', () => {
-      var repos;
+      if (typeof repo.language === 'string') {
+        repo.language = repo.language.split('•')[0].replace(/^\s+|\s+$|\s+(?=\s)/g, '');
+      }
 
-      $ = cheerio.load(htmlPayload);
+      return repo;
 
-      repos =
-        $('.repo-list-item').toArray().map((repoListItem) => {
-          return {
-            name: $('.repo-list-name', repoListItem).text(),
-            description: $('.repo-list-description', repoListItem).html(),
-            language: $('.repo-list-meta', repoListItem).text()
-          }
-        }).map((repo) => {
+    });
+}
 
-          if(typeof repo.name === 'string'){
-            repo.name = repo.name.replace(/^\s+|\s+$|\s+(?=\s)/g, '').replace(' / ', '/');
-          }
+var getTrendingRepos = function(language) => {
+  return new RSVP.Promise(function (resolve, reject) {
+    https.get(`${githubTrendingUrl}/${language}`, (response) => {
 
-          if(typeof repo.description == 'string'){
-            repo.description = repo.description.replace(/^\s+|\s+$|\s+(?=\s)/g, '');
-          }
+      var htmlPayload = '';
 
-          if(typeof repo.language === 'string'){
-            repo.language = repo.language.split('•')[0].replace(/^\s+|\s+$|\s+(?=\s)/g, '');
-          }
+      response.on('data',
+        chunk => {
+          htmlPayload += chunk;
+        });
 
-          return repo;
+      response.on('end',
+          () => resolve(parseReposFromTrendingPage(htmlPayload)),
+          error => reject(error)
+      );
+    });
+  });
+};
 
-        })
+var repoExists = function(name){
 
-        console.log(repos)
+};
 
-      })
+export default () => {
+  RSVP
 
-  })
+    // Fetch a list of repos for each language's trending page
 
+    .all(Object.keys(languages).map(langKey =>
+        getTrendingRepos(langKey)
+    )
+
+    // Collapse all the lists into a single list of repos
+
+    .then(trendingRepoLists =>
+        trendingRepoLists.reduce((prevList, nextList) =>
+          prevList.concat(nextList), []
+        )
+    )
+
+    // Update the DB
+
+    .then(repos => {
+
+      repos.forEach(repo => {
+
+        // TODO: implement w/ mongoose
+
+      });
+
+    });
 }
