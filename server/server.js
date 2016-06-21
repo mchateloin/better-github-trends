@@ -32,6 +32,7 @@ import { fetchComponentData } from './util/fetchData';
 import posts from './routes/post.routes';
 import dummyData from './dummyData';
 import serverConfig from './config';
+import autoUpdateDB from '../scraper/job';
 
 // MongoDB Connection
 mongoose.connect(serverConfig.mongoURL, (error) => {
@@ -40,8 +41,8 @@ mongoose.connect(serverConfig.mongoURL, (error) => {
     throw error;
   }
 
-  // feed some dummy data in DB.
-  dummyData();
+  autoUpdateDB();
+
 });
 
 // Apply body Parser and server public assets and routes

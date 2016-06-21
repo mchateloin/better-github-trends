@@ -1,12 +1,76 @@
 import https from 'https';
 import cheerio from 'cheerio';
 import mongoose from 'mongoose';
-import languages from 'languages';
-import RSVP from 'rsvp';
+import serverConfig from '../server/config';
+import Repo from '../server/models/repo';
 
-const githubTrendingUrl = 'https://github.com/trending';
+export default function(){
+  return Promise
 
-var parseReposFromTrendingPage = function(html){
+    // Fetch a list of repos for each language's trending page
+    .all(Object.keys(serverConfig.githubLanguages).map(langKey =>
+        getTrendingRepos(langKey)
+    ))
+
+    // Collapse all the lists into a single list of repos
+    .then(trendingRepoLists =>
+      trendingRepoLists.reduce((prevList, nextList) =>
+          prevList.concat(nextList), []
+      )
+    )
+
+    // Check if each db exists
+    .then(repos => {
+      return Promise.all(repos.map(repo => Repo
+            .findOne({name: repo.name})
+            .then(repo => {
+              console.log(repo.name);
+              if(!repo){
+                return new Model({
+                  name: repo.name,
+                  description: repo.description,
+                  language: repo.language,
+                  trendings: [{
+                    page: repo.trendingPage,
+                    dateFrom: Date.now(),
+                    dateTo: Date.now()
+                  }]
+                })
+                .save();
+              } else {
+
+              }
+            }, err => console.log(err))
+      ));
+    })
+
+
+    // Wait a fixed period of time to repeat this whole operation.
+    .then(()=>{
+      return setTimeout(autoUpdateDB, serverConfig.dbUpdateInterval);
+    })
+}
+
+function getTrendingRepos(language) {
+  return new Promise(function (resolve, reject) {
+    https.get(`${serverConfig.githubTrendingUrl}/${language}`, (response) => {
+
+      var htmlPayload = '';
+
+      response.on('data',
+          chunk => {
+          htmlPayload += chunk;
+        });
+
+      response.on('end',
+        () => resolve(parseReposFromTrendingPage(htmlPayload, language)),
+          error => reject(error)
+      );
+    });
+  });
+}
+
+function parseReposFromTrendingPage (html, trendingPage){
   var $ = cheerio.load(html);
 
   return $('.repo-list-item')
@@ -30,60 +94,9 @@ var parseReposFromTrendingPage = function(html){
         repo.language = repo.language.split('•')[0].replace(/^\s+|\s+$|\s+(?=\s)/g, '');
       }
 
+      repo.trendingPage = trendingPage || 'all';
+
       return repo;
-
-    });
-}
-
-var getTrendingRepos = function(language) => {
-  return new RSVP.Promise(function (resolve, reject) {
-    https.get(`${githubTrendingUrl}/${language}`, (response) => {
-
-      var htmlPayload = '';
-
-      response.on('data',
-        chunk => {
-          htmlPayload += chunk;
-        });
-
-      response.on('end',
-          () => resolve(parseReposFromTrendingPage(htmlPayload)),
-          error => reject(error)
-      );
-    });
-  });
-};
-
-var repoExists = function(name){
-
-};
-
-export default () => {
-  RSVP
-
-    // Fetch a list of repos for each language's trending page
-
-    .all(Object.keys(languages).map(langKey =>
-        getTrendingRepos(langKey)
-    )
-
-    // Collapse all the lists into a single list of repos
-
-    .then(trendingRepoLists =>
-        trendingRepoLists.reduce((prevList, nextList) =>
-          prevList.concat(nextList), []
-        )
-    )
-
-    // Update the DB
-
-    .then(repos => {
-
-      repos.forEach(repo => {
-
-        // TODO: implement w/ mongoose
-
-      });
 
     });
 }
