@@ -19,36 +19,51 @@ export default function(){
       )
     )
 
-    // Check if each db exists
-    .then(repos => {
-      return Promise.all(repos.map(repo => Repo
-            .findOne({name: repo.name})
-            .then(repo => {
-              console.log(repo.name);
-              if(!repo){
-                return new Model({
-                  name: repo.name,
-                  description: repo.description,
-                  language: repo.language,
-                  trendings: [{
-                    page: repo.trendingPage,
-                    dateFrom: Date.now(),
-                    dateTo: Date.now()
-                  }]
-                })
-                .save();
-              } else {
-
-              }
-            }, err => console.log(err))
-      ));
-    })
+    // Update each repo in the database
+    .then(repos => Promise.all(repos.map(repo => {
+      return saveRepo(repo)
+    })))
 
 
     // Wait a fixed period of time to repeat this whole operation.
-    .then(()=>{
+    .then(() => {
       return setTimeout(autoUpdateDB, serverConfig.dbUpdateInterval);
     })
+}
+
+function saveRepo(repo){
+  return Repo
+      .findOne({name: repo.name}).exec()
+      .then(result => {
+
+
+        if(!result){
+          console.log(`Repository '${repo.name}' does not exist. Creating a new record.`);
+
+          var repoModel = new Repo({
+            name: repo.name,
+            description: repo.description,
+            dateDiscovered: Date.now(),
+            language: repo.language,
+            trendings: {}
+          });
+
+          repoModel.trendings[repo.trendingPage] = [{
+            rank: repo.rank,
+            dateFrom: Date.now(),
+            dateTo: Date.now()
+          }];
+
+          return repoModel.save();
+
+        } else {
+          // Do an update
+        }
+
+      }, err => console.log(err))
+
+    .catch(reason => console.log(reason));
+
 }
 
 function getTrendingRepos(language) {
@@ -63,7 +78,7 @@ function getTrendingRepos(language) {
         });
 
       response.on('end',
-        () => resolve(parseReposFromTrendingPage(htmlPayload, language)),
+          () => resolve(parseReposFromTrendingPage(htmlPayload, language)),
           error => reject(error)
       );
     });
@@ -80,7 +95,7 @@ function parseReposFromTrendingPage (html, trendingPage){
         description: $('.repo-list-description', repoListItem).html(),
         language: $('.repo-list-meta', repoListItem).text()
     }))
-    .map(repo => {
+    .map((repo, rank) => {
 
       if (typeof repo.name === 'string') {
         repo.name = repo.name.replace(/^\s+|\s+$|\s+(?=\s)/g, '').replace(' / ', '/');
@@ -94,7 +109,10 @@ function parseReposFromTrendingPage (html, trendingPage){
         repo.language = repo.language.split('•')[0].replace(/^\s+|\s+$|\s+(?=\s)/g, '');
       }
 
+      repo.rank = rank + 1;
       repo.trendingPage = trendingPage || 'all';
+
+      console.log(repo);
 
       return repo;
 

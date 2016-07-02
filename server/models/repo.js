@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
+import assert from 'assert';
 import serverConfig from '../../server/config';
 const Schema = mongoose.Schema;
+
+mongoose.Promise = global.Promise;
 
 const repoSchema = new Schema({
   name: { type: 'String', required: true },
@@ -8,23 +11,13 @@ const repoSchema = new Schema({
   language: { type: 'String', required: true },
   dateDiscovered: {type: 'Date', required: true},
   trendings: Object.keys(serverConfig.githubLanguages).reduce((prev, next) => {
-    prev[next] = { type: 'Array', required: false, default: []};
+    prev[next] = [{
+      rank: { type: 'Number', required: true },
+      dateFrom: { type: 'Date', required: true },
+      dateTo: { type: 'Date', required: true }
+    }];
     return prev;
   }, {})
 });
-
-repoSchema.statics.findByName = function(repoName){
-  return new Promise((resolve, reject) => {
-    this.find({ name: new RegExp(repoName, 'i') }, function(err, repos){
-      if(err){
-        reject(err);
-      } else if(repos.length === 0){
-        resolve(null);
-      } else {
-        resolve(repos[0]);
-      }
-    })
-  });
-};
 
 export default mongoose.model('Repo', repoSchema);
