@@ -7,7 +7,7 @@ mongoose.Promise = global.Promise;
 
 const repoSchema = new Schema({
   name: { type: 'String', required: true },
-  description: { type: 'String', required: true },
+  description: { type: 'String', required: false },
   language: { type: 'String', required: true },
   dateDiscovered: {type: 'Date', required: true},
   trendings: Object.keys(serverConfig.githubLanguages).reduce((prev, next) => {

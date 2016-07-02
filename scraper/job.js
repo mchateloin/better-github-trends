@@ -33,16 +33,16 @@ export default function(){
 
 function saveRepo(repo){
   return Repo
-      .findOne({name: repo.name}).exec()
-      .then(result => {
+      .findOne({name: repo.name})//.exec()
+      .then(repoModel => {
+        if(!repoModel){
 
+          // Do a create
+          console.log(`Repository '${repo.name}' does not exist in DB. Creating a new record.`);
 
-        if(!result){
-          console.log(`Repository '${repo.name}' does not exist. Creating a new record.`);
-
-          var repoModel = new Repo({
+          repoModel = new Repo({
             name: repo.name,
-            description: repo.description,
+            description: repo.description || '',
             dateDiscovered: Date.now(),
             language: repo.language,
             trendings: {}
@@ -54,11 +54,35 @@ function saveRepo(repo){
             dateTo: Date.now()
           }];
 
-          return repoModel.save();
-
         } else {
           // Do an update
+          console.log(`Repository '${repo.name}' exists in DB. Updating record with rank ${repo.rank} on the ${repo.trendingPage} page.`);
+
+          var trendsSeries = repoModel.trendings[repo.trendingPage],
+              lastIndex = trendsSeries.length - 1,
+              now = new Date(),
+              rankedGapThreshold = 1000 * 60 * 10; // 10 minutes
+
+          if(trendsSeries.length > 0 && trendsSeries[lastIndex].rank === repo.rank && trendsSeries[lastIndex].dateTo.getTime() - now.getTime() < rankedGapThreshold){
+
+            repoModel.trendings[repo.trendingPage][lastIndex].dateTo = now;
+
+          } else {
+
+            repoModel.trendings[repo.trendingPage].push({
+              rank: repo.rank,
+              dateFrom: now,
+              dateTo: now
+            });
+
+          }
+
+          repoModel.description = repo.description || '';
+          repoModel.language = repo.language;
+
         }
+
+        return repoModel.save();
 
       }, err => console.log(err))
 
