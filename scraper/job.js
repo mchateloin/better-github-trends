@@ -67,7 +67,7 @@ function saveRepo(repo){
           var trendsSeries = repoModel.trendings[repo.trendingPage],
               lastIndex = trendsSeries.length - 1,
               now = new Date(),
-              rankedGapThreshold = 1000 * 60 * 10; // 10 minutes
+              rankedGapThreshold = 1000 * 60 * 12; // 12 minutes
 
           if(trendsSeries.length > 0 && trendsSeries[lastIndex].rank === repo.rank && trendsSeries[lastIndex].dateTo.getTime() - now.getTime() < rankedGapThreshold){
 
