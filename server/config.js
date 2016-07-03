@@ -1,7 +1,6 @@
 const config = {
   mongoURL: process.env.MONGO_URL || 'mongodb://localhost:27017/trendsdb',
   port: process.env.PORT || 8000,
-  dbUpdateInterval: 5 * 60 * 1000, // (milliseconds)
   githubTrendingUrl: 'https://github.com/trending',
   githubLanguages: {
     'all': 'All Languages',

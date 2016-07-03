@@ -4,7 +4,10 @@ import mongoose from 'mongoose';
 import serverConfig from '../server/config';
 import Repo from '../server/models/repo';
 
-export default function(){
+function updateDB(){
+
+  console.log('Beginning update job.');
+
   return Promise
 
     // Fetch a list of repos for each language's trending page
@@ -24,11 +27,14 @@ export default function(){
       return saveRepo(repo)
     })))
 
+    .then(function(){
+      console.log('Update job completed.');
+      process.exit();
+    }, function(err){
+      console.log(err.stack || err.message || err);
+      process.exit();
+    });
 
-    // Wait a fixed period of time to repeat this whole operation.
-    .then(() => {
-      return setTimeout(autoUpdateDB, serverConfig.dbUpdateInterval);
-    })
 }
 
 function saveRepo(repo){
@@ -142,3 +148,14 @@ function parseReposFromTrendingPage (html, trendingPage){
 
     });
 }
+
+// MongoDB Connection
+mongoose.connect(serverConfig.mongoURL, (error) => {
+  if (error) {
+    console.error('Please make sure Mongodb is installed and running!'); // eslint-disable-line no-console
+    throw error;
+  }
+
+  updateDB();
+
+});
