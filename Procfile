@@ -1,4 +1,3 @@
-web: npm start
-web-prod: npm start:prod
+web: npm start:prod
 scraper: npm run-script scraper
-scraper-prod: run-script scraper:prod
+scraper-prod: npm run-script scraper:prod
